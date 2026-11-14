@@ -4,22 +4,30 @@ import clientPromise from '@/lib/mongodb';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { serial, destinationUrl } = body;
+        const { serial, destinationUrl, nomeEmpresa } = body;
 
-        if (!serial || !destinationUrl) {
+        if (!serial || !destinationUrl || !nomeEmpresa) {
             return NextResponse.json(
-                { message: 'Serial e URL são obrigatórios' },
+                { message: 'Serial, URL e Nome da Empresa são obrigatórios' },
                 { status: 400 }
             );
         }
 
         const client = await clientPromise;
-        const db = client.db(); // Pega o banco padrão da sua string de conexão
+        const db = client.db();
 
         // Só ativa se o display estiver com status 'disponivel'
         const result = await db.collection('displays').updateOne(
             { serial, status: 'disponivel' },
-            { $set: { status: 'ativo', destinationUrl, clientId: 'teste-cliente-123' } }
+            {
+                $set: {
+                    status: 'ativo',
+                    destinationUrl,
+                    nomeEmpresa, // Novo campo adicionado
+                    clientId: 'teste-cliente-123',
+                    updatedAt: new Date()
+                }
+            }
         );
 
         if (result.modifiedCount === 0) {

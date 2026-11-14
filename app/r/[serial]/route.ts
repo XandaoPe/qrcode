@@ -12,13 +12,14 @@ export async function GET(
         const display = await db.collection('displays').findOne({ serial });
 
         if (!display) {
+            // Se não existe, volta pra home
             return NextResponse.redirect(new URL('/', request.url));
         }
 
-        // Se o display ainda não foi vendido/ativado
+        // REGRA DE NEGÓCIO: Se não estiver 'ativo' ou não tiver URL, não redireciona
         if (display.status !== 'ativo' || !display.destinationUrl) {
-            // Manda para uma página temporária (ou para a home, por enquanto)
-            return NextResponse.redirect(new URL('/', request.url));
+            // Manda para uma página de aviso ou para a home
+            return NextResponse.redirect(new URL('/?erro=display-inativo', request.url));
         }
 
         // Redireciona para o site do cliente

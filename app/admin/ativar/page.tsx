@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Importação para voltar
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { QrCode, Link as LinkIcon, CheckCircle2, XCircle, Copy, Check, Smartphone, ArrowLeft, X } from 'lucide-react';
+import { QrCode, Link as LinkIcon, CheckCircle2, XCircle, Copy, Check, Smartphone, ArrowLeft, X, Building2 } from 'lucide-react';
 
 export default function AtivarDisplayPage() {
     const router = useRouter();
     const [serial, setSerial] = useState('');
     const [url, setUrl] = useState('');
+    const [nomeEmpresa, setNomeEmpresa] = useState(''); // Novo estado
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [nfcUrl, setNfcUrl] = useState('');
@@ -36,12 +37,14 @@ export default function AtivarDisplayPage() {
             const res = await fetch('/api/ativar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ serial, destinationUrl: url }),
+                body: JSON.stringify({ serial, destinationUrl: url, nomeEmpresa }), // Enviando nomeEmpresa
             });
             const data = await res.json();
 
             if (res.ok) {
                 setMessage({ type: 'success', text: data.message });
+                // Opcional: limpar formulário após sucesso
+                // setSerial(''); setUrl(''); setNomeEmpresa('');
             } else {
                 setMessage({ type: 'error', text: data.message });
             }
@@ -63,16 +66,15 @@ export default function AtivarDisplayPage() {
         }
     }
 
-    // Função para limpar o formulário
     function handleLimpar() {
         setSerial('');
         setUrl('');
+        setNomeEmpresa('');
         setMessage(null);
     }
 
     return (
         <div className="flex flex-col h-full">
-            {/* HEADER PROFISSIONAL COM BOTÃO VOLTAR */}
             <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shadow-sm sticky top-0 z-10">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="mr-4 text-slate-500 hover:text-slate-900">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
@@ -83,7 +85,6 @@ export default function AtivarDisplayPage() {
             <div className="flex-1 flex items-center justify-center p-8">
                 <Card className="w-full max-w-md shadow-lg border-slate-200">
                     <CardHeader className="space-y-1 text-center relative pb-6">
-                        {/* BOTÃO FECHAR/LIMPAR NO CANTO DO CARD */}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -101,7 +102,7 @@ export default function AtivarDisplayPage() {
                         </div>
                         <CardTitle className="text-2xl font-bold tracking-tight">Ativar Display</CardTitle>
                         <CardDescription className="text-slate-500">
-                            Insira o serial do produto e a URL de destino.
+                            Insira os dados do produto e do cliente.
                         </CardDescription>
                     </CardHeader>
 
@@ -121,6 +122,23 @@ export default function AtivarDisplayPage() {
                                     />
                                 </div>
                             </div>
+
+                            {/* NOVO CAMPO: Nome da Empresa */}
+                            <div className="space-y-2">
+                                <Label htmlFor="nomeEmpresa" className="text-slate-700">Nome da Empresa</Label>
+                                <div className="relative">
+                                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                    <Input
+                                        id="nomeEmpresa"
+                                        placeholder="Ex: Restaurante do Zé"
+                                        className="pl-9"
+                                        value={nomeEmpresa}
+                                        onChange={(e) => setNomeEmpresa(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="url" className="text-slate-700">URL de Destino</Label>
                                 <div className="relative">

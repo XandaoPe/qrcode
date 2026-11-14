@@ -8,12 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { QrCode, Package, Download, Loader2, ArrowLeft, X } from 'lucide-react';
-import QRCode from 'qrcode';
 
 interface DisplayGerado {
     serial: string;
     url: string;
-    qrCodeDataUrl?: string;
+    qrCodeBase64?: string;
 }
 
 export default function GerarLotePage() {
@@ -42,16 +41,8 @@ export default function GerarLotePage() {
 
             if (res.ok || res.status === 207) {
                 setMessage({ type: res.status === 207 ? 'error' : 'success', text: data.message });
-
-                const displaysComQrCode = await Promise.all(
-                    data.displays.map(async (display: DisplayGerado) => {
-                        const qrCodeDataUrl = await QRCode.toDataURL(display.url, {
-                            width: 300, margin: 2, color: { dark: '#000000', light: '#ffffff' }
-                        });
-                        return { ...display, qrCodeDataUrl };
-                    })
-                );
-                setDisplaysGerados(displaysComQrCode);
+                // A API já retorna o QR Code em Base64
+                setDisplaysGerados(data.displays);
             } else {
                 setMessage({ type: 'error', text: data.message });
             }
@@ -80,7 +71,6 @@ export default function GerarLotePage() {
 
     return (
         <div className="flex flex-col h-full">
-            {/* HEADER PROFISSIONAL */}
             <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shadow-sm sticky top-0 z-10">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="mr-4 text-slate-500 hover:text-slate-900">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
@@ -91,7 +81,6 @@ export default function GerarLotePage() {
             <div className="p-8 max-w-6xl mx-auto w-full space-y-8">
                 <Card className="shadow-lg border-slate-200">
                     <CardHeader className="relative">
-                        {/* BOTÃO LIMPAR/FECHAR */}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -163,11 +152,11 @@ export default function GerarLotePage() {
                             {displaysGerados.map((display) => (
                                 <Card key={display.serial} className="overflow-hidden text-center hover:shadow-md transition-shadow border-slate-200">
                                     <CardContent className="p-4 flex flex-col items-center">
-                                        {display.qrCodeDataUrl && (
-                                            <img src={display.qrCodeDataUrl} alt={`QR Code ${display.serial}`} className="w-40 h-40 mb-2" />
+                                        {display.qrCodeBase64 && (
+                                            <img src={display.qrCodeBase64} alt={`QR Code ${display.serial}`} className="w-40 h-40 mb-2" />
                                         )}
                                         <p className="font-mono font-bold text-sm text-slate-800">{display.serial}</p>
-                                        <Button variant="ghost" size="sm" className="mt-2 text-slate-500" onClick={() => downloadQRCode(display.qrCodeDataUrl!, display.serial)}>
+                                        <Button variant="ghost" size="sm" className="mt-2 text-slate-500" onClick={() => downloadQRCode(display.qrCodeBase64!, display.serial)}>
                                             <Download className="w-3 h-3 mr-1" /> Baixar PNG
                                         </Button>
                                     </CardContent>
