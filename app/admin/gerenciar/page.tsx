@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     ArrowLeft, Search, Edit2, Trash2, Power, CheckCircle2,
-    XCircle, Loader2, Building2, Link as LinkIcon, X, Download, QrCode
+    XCircle, Loader2, Building2, Link as LinkIcon, X, Download, QrCode, ExternalLink
 } from 'lucide-react';
 
 interface Display {
@@ -144,8 +144,6 @@ export default function GerenciarDisplaysPage() {
         setModalLoading(true);
 
         try {
-            // Se for ativação, envia status 'ativo' e os dados.
-            // Se for edição, envia apenas os dados (o status atual é mantido).
             const payload: any = {
                 nomeEmpresa: formNomeEmpresa,
                 destinationUrl: formUrl,
@@ -215,151 +213,184 @@ export default function GerenciarDisplaysPage() {
 
                 <Card className="border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
                             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                                 <tr>
                                     <th className="px-4 py-4 font-medium text-center">QR Code</th>
-                                    <th className="px-6 py-4 font-medium">Serial</th>
-                                    <th className="px-6 py-4 font-medium">Empresa</th>
-                                    <th className="px-6 py-4 font-medium">URL Destino</th>
-                                    <th className="px-6 py-4 font-medium">Status</th>
-                                    <th className="px-6 py-4 font-medium text-right">Ações</th>
+                                    <th className="px-4 py-4 font-medium">Serial</th>
+                                    <th className="px-4 py-4 font-medium">Empresa</th>
+                                    <th className="px-4 py-4 font-medium">Link do QR (Físico)</th>
+                                    <th className="px-4 py-4 font-medium">Destino (Cliente)</th>
+                                    <th className="px-4 py-4 font-medium">Status</th>
+                                    <th className="px-4 py-4 font-medium text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                                             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                                             Carregando displays...
                                         </td>
                                     </tr>
                                 ) : filteredDisplays.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                                             Nenhum display encontrado.
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredDisplays.map((display) => (
-                                        <tr key={display._id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-4 py-3 text-center">
-                                                {display.qrCodeBase64 ? (
-                                                    <div className="relative group inline-block">
-                                                        <img
-                                                            src={display.qrCodeBase64}
-                                                            alt={`QR ${display.serial}`}
-                                                            className="w-12 h-12 rounded border border-slate-200 bg-white"
-                                                        />
-                                                        <button
-                                                            onClick={() => downloadQRCode(display.qrCodeBase64!, display.serial)}
-                                                            className="absolute inset-0 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                                                            title="Baixar QR Code"
-                                                        >
-                                                            <Download className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-slate-400 text-xs italic mb-1">Sem QR</span>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-6 text-[10px] px-2"
-                                                            onClick={() => handleGenerateQr(display)}
-                                                            disabled={generatingQrId === display._id}
-                                                        >
-                                                            {generatingQrId === display._id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <QrCode className="w-3 h-3 mr-1" />}
-                                                            Gerar
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 font-mono font-medium text-slate-800">
-                                                {display.serial}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {display.nomeEmpresa ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Building2 className="w-4 h-4 text-slate-400" />
-                                                        <span className="text-slate-700">{display.nomeEmpresa}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400 italic">Não definido</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {display.destinationUrl ? (
-                                                    <a href={display.destinationUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 max-w-[200px] truncate">
-                                                        <LinkIcon className="w-3 h-3 shrink-0" />
-                                                        {display.destinationUrl}
+                                    filteredDisplays.map((display) => {
+                                        // Constrói a URL física do QR Code baseada na origem atual
+                                        const qrPhysicalUrl = typeof window !== 'undefined'
+                                            ? `${window.location.origin}/r/${display.serial}`
+                                            : `/r/${display.serial}`;
+
+                                        return (
+                                            <tr key={display._id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-3 text-center">
+                                                    {display.qrCodeBase64 ? (
+                                                        <div className="relative group inline-block">
+                                                            <img
+                                                                src={display.qrCodeBase64}
+                                                                alt={`QR ${display.serial}`}
+                                                                className="w-12 h-12 rounded border border-slate-200 bg-white"
+                                                            />
+                                                            <button
+                                                                onClick={() => downloadQRCode(display.qrCodeBase64!, display.serial)}
+                                                                className="absolute inset-0 bg-black/60 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                                title="Baixar QR Code"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center">
+                                                            <span className="text-slate-400 text-[10px] italic mb-1">Sem QR</span>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-6 text-[10px] px-2"
+                                                                onClick={() => handleGenerateQr(display)}
+                                                                disabled={generatingQrId === display._id}
+                                                            >
+                                                                {generatingQrId === display._id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <QrCode className="w-3 h-3 mr-1" />}
+                                                                Gerar
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-4 font-mono font-medium text-slate-800">
+                                                    {display.serial}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    {display.nomeEmpresa ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <Building2 className="w-4 h-4 text-slate-400" />
+                                                            <span className="text-slate-700 max-w-[150px] truncate" title={display.nomeEmpresa}>
+                                                                {display.nomeEmpresa}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic">Não definido</span>
+                                                    )}
+                                                </td>
+
+                                                {/* NOVA COLUNA: Link gravado no QR Code */}
+                                                <td className="px-4 py-4">
+                                                    <a
+                                                        href={qrPhysicalUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-slate-500 hover:text-blue-600 flex items-center gap-1 max-w-[180px] truncate font-mono text-xs"
+                                                        title={qrPhysicalUrl}
+                                                    >
+                                                        <ExternalLink className="w-3 h-3 shrink-0" />
+                                                        /r/{display.serial}
                                                     </a>
-                                                ) : (
-                                                    <span className="text-slate-400 italic">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                    ${display.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                                                        display.status === 'desativado' ? 'bg-red-100 text-red-800' :
-                                                            'bg-blue-100 text-blue-800'}`}>
-                                                    {display.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {/* Regerar QR Code (se já existir) */}
-                                                    {display.qrCodeBase64 && (
+                                                </td>
+
+                                                {/* COLUNA RENOMEADA: Destino do cliente */}
+                                                <td className="px-4 py-4">
+                                                    {display.destinationUrl ? (
+                                                        <a
+                                                            href={display.destinationUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-blue-600 hover:underline flex items-center gap-1 max-w-[180px] truncate"
+                                                            title={display.destinationUrl}
+                                                        >
+                                                            <LinkIcon className="w-3 h-3 shrink-0" />
+                                                            {display.destinationUrl}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic">-</span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-4 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                        ${display.status === 'ativo' ? 'bg-green-100 text-green-800' :
+                                                            display.status === 'desativado' ? 'bg-red-100 text-red-800' :
+                                                                'bg-blue-100 text-blue-800'}`}>
+                                                        {display.status.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {/* Regerar QR Code (se já existir) */}
+                                                        {display.qrCodeBase64 && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                title="Regerar QR Code"
+                                                                onClick={() => handleGenerateQr(display)}
+                                                                disabled={generatingQrId === display._id}
+                                                                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                                            >
+                                                                {generatingQrId === display._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                                                            </Button>
+                                                        )}
+
+                                                        {/* Botão de Ativar / Desativar */}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            title="Regerar QR Code"
-                                                            onClick={() => handleGenerateQr(display)}
-                                                            disabled={generatingQrId === display._id}
-                                                            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                                            title={display.status === 'ativo' ? 'Desativar' : 'Ativar'}
+                                                            onClick={() => handleToggleStatus(display)}
+                                                            className={display.status === 'ativo' ? 'text-orange-500 hover:text-orange-700 hover:bg-orange-50' : 'text-green-500 hover:text-green-700 hover:bg-green-50'}
                                                         >
-                                                            {generatingQrId === display._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                                                            <Power className="w-4 h-4" />
                                                         </Button>
-                                                    )}
 
-                                                    {/* Botão de Ativar / Desativar */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        title={display.status === 'ativo' ? 'Desativar' : 'Ativar'}
-                                                        onClick={() => handleToggleStatus(display)}
-                                                        className={display.status === 'ativo' ? 'text-orange-500 hover:text-orange-700 hover:bg-orange-50' : 'text-green-500 hover:text-green-700 hover:bg-green-50'}
-                                                    >
-                                                        <Power className="w-4 h-4" />
-                                                    </Button>
+                                                        {/* Botão de Editar */}
+                                                        {display.status !== 'disponivel' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                title="Editar"
+                                                                onClick={() => openModal(display, 'edit')}
+                                                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                                            >
+                                                                <Edit2 className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
 
-                                                    {/* Botão de Editar */}
-                                                    {display.status !== 'disponivel' && (
+                                                        {/* Botão de Excluir */}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            title="Editar"
-                                                            onClick={() => openModal(display, 'edit')}
-                                                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                                            title="Excluir"
+                                                            onClick={() => handleDelete(display._id)}
+                                                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
                                                         >
-                                                            <Edit2 className="w-4 h-4" />
+                                                            <Trash2 className="w-4 h-4" />
                                                         </Button>
-                                                    )}
-
-                                                    {/* Botão de Excluir */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        title="Excluir"
-                                                        onClick={() => handleDelete(display._id)}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
