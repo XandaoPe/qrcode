@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Printer, Calendar, Hash, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Printer, Calendar, Hash, AlertTriangle, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import { GoogleReviewCard } from '@/components/print/GoogleReviewCard';
@@ -29,18 +29,27 @@ export default function HistoricoImpressoesPage() {
     const [historico, setHistorico] = useState<Impressao[]>([]);
     const [loading, setLoading] = useState(true);
     const [printingId, setPrintingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     // Ref para o container invisível da reimpressão
     const printContainerRef = useRef<HTMLDivElement>(null);
     const [displaysToPrint, setDisplaysToPrint] = useState<DisplayGerado[]>([]);
 
+    async function fetchHistorico() {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/historico');
+            const data = await res.json();
+            if (data.impressoes) setHistorico(data.impressoes);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
-        fetch('/api/historico')
-            .then(res => res.json())
-            .then(data => {
-                if (data.impressoes) setHistorico(data.impressoes);
-            })
-            .finally(() => setLoading(false));
+        fetchHistorico();
     }, []);
 
     async function handleReimprimir(item: Impressao) {
@@ -58,13 +67,11 @@ export default function HistoricoImpressoesPage() {
             if (!printContainerRef.current) return;
 
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
-            const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
 
             const cardW = 80;
             const cardH = 50;
-
-            // Otimização de espaço
             const marginY = 8;
             const gapY = 6;
             const marginX = (pageWidth - (cardW * 2)) / 3;
@@ -109,6 +116,31 @@ export default function HistoricoImpressoesPage() {
         } finally {
             setPrintingId(null);
             setDisplaysToPrint([]);
+        }
+    }
+
+    async function handleDelete(id: string) {
+        if (!confirm('Tem certeza que deseja excluir este registro do histórico? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        setDeletingId(id);
+        try {
+            const res = await fetch(`/api/historico/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                // Atualiza a lista removendo o item localmente para ser mais rápido
+                setHistorico(prev => prev.filter(item => item._id !== id));
+            } else {
+                alert('Erro ao excluir o registro.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Erro de conexão ao tentar excluir.');
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -185,11 +217,28 @@ export default function HistoricoImpressoesPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-2 w-full md:w-auto">
+                                        <div className="flex gap-2 w-full md:w-auto items-center">
+                                            {/* Botão de Excluir */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Excluir Registro"
+                                                onClick={() => handleDelete(item._id)}
+                                                disabled={deletingId === item._id || printingId === item._id}
+                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                            >
+                                                {deletingId === item._id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-5 h-5" />
+                                                )}
+                                            </Button>
+
+                                            {/* Botão de Reimprimir */}
                                             <Button
                                                 className={`w-full md:w-auto text-white ${hasDisplaysData ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-400 cursor-not-allowed hover:bg-slate-400'}`}
                                                 onClick={() => handleReimprimir(item)}
-                                                disabled={printingId === item._id || !hasDisplaysData}
+                                                disabled={printingId === item._id || !hasDisplaysData || deletingId === item._id}
                                                 title={!hasDisplaysData ? "Registro antigo, sem dados do QR Code" : "Baixar PDF novamente"}
                                             >
                                                 {printingId === item._id ? (

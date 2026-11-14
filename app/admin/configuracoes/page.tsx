@@ -15,18 +15,18 @@ export default function ConfiguracoesPage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const [prefixo, setPrefixo] = useState('DISP');
-    const [proximoNumero, setProximoNumero] = useState(1);
-    const [padding, setPadding] = useState(4);
+    // Inicializamos com valores padrão válidos
+    const [proximoNumero, setProximoNumero] = useState<number | string>(1);
+    const [padding, setPadding] = useState<number | string>(4);
 
     useEffect(() => {
         fetch('/api/configuracoes')
             .then(res => res.json())
             .then(data => {
                 if (data.config) {
-                    setPrefixo(data.config.prefixo);
-                    setProximoNumero(data.config.proximoNumero);
-                    setPadding(data.config.padding);
+                    // Usamos o fallback (||) para garantir que nunca será undefined
+                    setProximoNumero(data.config.proximoNumero || 1);
+                    setPadding(data.config.padding || 4);
                 }
             })
             .catch(() => setMessage({ type: 'error', text: 'Erro ao carregar configurações.' }))
@@ -42,7 +42,10 @@ export default function ConfiguracoesPage() {
             const res = await fetch('/api/configuracoes', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prefixo, proximoNumero, padding }),
+                body: JSON.stringify({
+                    proximoNumero: Number(proximoNumero) || 1,
+                    padding: Number(padding) || 4
+                }),
             });
 
             if (res.ok) {
@@ -60,8 +63,15 @@ export default function ConfiguracoesPage() {
 
     // Função para gerar a prévia do serial
     const getPreview = () => {
-        const numStr = String(proximoNumero).padStart(padding, '0');
-        return `${prefixo || 'PREFIXO'}-${numStr}`;
+        const num = Number(proximoNumero) || 1;
+        const pad = Number(padding) || 4;
+        const numStr = String(num).padStart(pad, '0');
+
+        const now = new Date();
+        const dateStr = String(now.getDate()).padStart(2, '0') + String(now.getMonth() + 1).padStart(2, '0');
+        const timeStr = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+        return `DISP-${dateStr}-${timeStr}-${numStr}`;
     };
 
     if (loading) {
@@ -89,7 +99,7 @@ export default function ConfiguracoesPage() {
                             <CardTitle className="text-2xl">Numeração de Displays</CardTitle>
                         </div>
                         <CardDescription>
-                            Defina como os seriais sequenciais serão gerados na criação de novos lotes.
+                            O prefixo (Data e Hora) é gerado automaticamente. Ajuste apenas a numeração caso precise pular algum código.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -97,15 +107,17 @@ export default function ConfiguracoesPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="prefixo">Prefixo</Label>
+                                    <Label htmlFor="proximoNumero">Próximo Número</Label>
                                     <Input
-                                        id="prefixo"
-                                        value={prefixo}
-                                        onChange={(e) => setPrefixo(e.target.value.toUpperCase())}
-                                        placeholder="Ex: DISP"
+                                        id="proximoNumero"
+                                        type="number"
+                                        min="1"
+                                        // Garante que o value nunca seja undefined
+                                        value={proximoNumero ?? ''}
+                                        onChange={(e) => setProximoNumero(e.target.value)}
                                         required
                                     />
-                                    <p className="text-xs text-slate-500">Texto fixo antes do número.</p>
+                                    <p className="text-xs text-slate-500">Use se precisar pular números.</p>
                                 </div>
 
                                 <div className="space-y-2">
@@ -115,30 +127,17 @@ export default function ConfiguracoesPage() {
                                         type="number"
                                         min="1"
                                         max="10"
-                                        value={padding}
-                                        onChange={(e) => setPadding(parseInt(e.target.value))}
+                                        // Garante que o value nunca seja undefined
+                                        value={padding ?? ''}
+                                        onChange={(e) => setPadding(e.target.value)}
                                         required
                                     />
                                     <p className="text-xs text-slate-500">Ex: 4 dígitos = 0001.</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="proximoNumero">Próximo Número</Label>
-                                <Input
-                                    id="proximoNumero"
-                                    type="number"
-                                    min="1"
-                                    value={proximoNumero}
-                                    onChange={(e) => setProximoNumero(parseInt(e.target.value))}
-                                    required
-                                />
-                                <p className="text-xs text-slate-500">O número a ser usado no próximo lote.</p>
-                            </div>
-
-                            {/* PREVIEW */}
                             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <span className="text-sm font-medium text-slate-700 block mb-1">Prévia do Próximo Display:</span>
+                                <span className="text-sm font-medium text-slate-700 block mb-1">Prévia do Formato:</span>
                                 <span className="font-mono text-lg text-blue-600 font-bold">{getPreview()}</span>
                             </div>
 
