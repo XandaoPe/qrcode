@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Layers, Settings, Database, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Layers, Settings, Database, SlidersHorizontal, Printer } from 'lucide-react';
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -12,7 +12,8 @@ export function Sidebar() {
         { href: '/admin/gerar-lote', label: 'Gerar Lote', icon: Layers },
         { href: '/admin/ativar', label: 'Ativar Display', icon: Settings },
         { href: '/admin/gerenciar', label: 'Gerenciar Displays', icon: Database },
-        { href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }, // Novo Link
+        { href: '/admin/impressoes', label: 'Histórico de Impressões', icon: Printer },
+        { href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal },
     ];
 
     return (
@@ -28,7 +29,8 @@ export function Sidebar() {
             <nav className="flex-1 p-4 space-y-2">
                 {links.map((link) => {
                     const Icon = link.icon;
-                    const isActive = pathname === link.href;
+                    // Verifica se a rota atual é exatamente o href, ou se é uma sub-rota (ex: /admin/gerenciar/123)
+                    const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
                     return (
                         <Link key={link.href} href={link.href}>
