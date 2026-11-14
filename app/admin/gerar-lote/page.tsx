@@ -1,21 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { QrCode, Package, Download, Loader2 } from 'lucide-react';
+import { QrCode, Package, Download, Loader2, ArrowLeft, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface DisplayGerado {
     serial: string;
     url: string;
-    qrCodeDataUrl?: string; // A imagem em base64
+    qrCodeDataUrl?: string;
 }
 
 export default function GerarLotePage() {
+    const router = useRouter();
     const [lote, setLote] = useState('');
     const [quantidade, setQuantidade] = useState('10');
     const [loading, setLoading] = useState(false);
@@ -28,36 +30,27 @@ export default function GerarLotePage() {
         setMessage(null);
         setDisplaysGerados([]);
 
-        // Pega a URL base atual (ex: https://seusite.vercel.app)
         const baseUrl = window.location.origin;
 
         try {
             const res = await fetch('/api/gerar-lote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    lote,
-                    quantidade: parseInt(quantidade),
-                    baseUrl
-                }),
+                body: JSON.stringify({ lote, quantidade: parseInt(quantidade), baseUrl }),
             });
             const data = await res.json();
 
             if (res.ok || res.status === 207) {
                 setMessage({ type: res.status === 207 ? 'error' : 'success', text: data.message });
 
-                // Agora geramos as imagens dos QR Codes no navegador
                 const displaysComQrCode = await Promise.all(
                     data.displays.map(async (display: DisplayGerado) => {
                         const qrCodeDataUrl = await QRCode.toDataURL(display.url, {
-                            width: 300,
-                            margin: 2,
-                            color: { dark: '#000000', light: '#ffffff' }
+                            width: 300, margin: 2, color: { dark: '#000000', light: '#ffffff' }
                         });
                         return { ...display, qrCodeDataUrl };
                     })
                 );
-
                 setDisplaysGerados(displaysComQrCode);
             } else {
                 setMessage({ type: 'error', text: data.message });
@@ -69,7 +62,6 @@ export default function GerarLotePage() {
         }
     }
 
-    // Função para baixar um QR Code individual (útil para testes)
     function downloadQRCode(dataUrl: string, serial: string) {
         const link = document.createElement('a');
         link.href = dataUrl;
@@ -79,19 +71,43 @@ export default function GerarLotePage() {
         document.body.removeChild(link);
     }
 
-    return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-5xl mx-auto space-y-8">
+    function handleLimpar() {
+        setLote('');
+        setQuantidade('10');
+        setMessage(null);
+        setDisplaysGerados([]);
+    }
 
-                {/* Formulário de Geração */}
-                <Card className="shadow-lg">
-                    <CardHeader>
+    return (
+        <div className="flex flex-col h-full">
+            {/* HEADER PROFISSIONAL */}
+            <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 shadow-sm sticky top-0 z-10">
+                <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="mr-4 text-slate-500 hover:text-slate-900">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+                </Button>
+                <h1 className="text-xl font-semibold text-slate-800">Gerador de Lotes</h1>
+            </header>
+
+            <div className="p-8 max-w-6xl mx-auto w-full space-y-8">
+                <Card className="shadow-lg border-slate-200">
+                    <CardHeader className="relative">
+                        {/* BOTÃO LIMPAR/FECHAR */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-6 top-6 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full"
+                            onClick={handleLimpar}
+                            title="Limpar tudo"
+                        >
+                            <X className="w-4 h-4" />
+                        </Button>
+
                         <div className="flex items-center gap-2">
                             <Package className="w-6 h-6 text-blue-600" />
-                            <CardTitle className="text-2xl">Gerar Lote de QR Codes</CardTitle>
+                            <CardTitle className="text-2xl">Novo Lote de QR Codes</CardTitle>
                         </div>
                         <CardDescription>
-                            Crie os seriais sequenciais. Eles serão salvos no banco como "disponíveis" e não poderão ser repetidos.
+                            Crie seriais sequenciais. Eles serão salvos como "disponíveis" e não poderão ser repetidos.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -107,12 +123,12 @@ export default function GerarLotePage() {
                                 />
                             </div>
                             <div className="space-y-2 w-full md:w-32">
-                                <Label htmlFor="quantidade">Quantidade</Label>
+                                <Label htmlFor="quantidade">Qtd (Max 500)</Label>
                                 <Input
                                     id="quantidade"
                                     type="number"
                                     min="1"
-                                    max="500" // Limite para não travar o navegador
+                                    max="500"
                                     value={quantidade}
                                     onChange={(e) => setQuantidade(e.target.value)}
                                     required
@@ -132,36 +148,26 @@ export default function GerarLotePage() {
                     </CardContent>
                 </Card>
 
-                {/* Grid de QR Codes Gerados */}
                 {displaysGerados.length > 0 && (
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                             <h2 className="text-xl font-bold text-slate-800">
                                 QR Codes Gerados ({displaysGerados.length})
                             </h2>
-                            <Button variant="outline" onClick={() => window.print()}>
+                            <Button variant="outline" className="border-slate-300" onClick={() => window.print()}>
                                 Imprimir Página
                             </Button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {displaysGerados.map((display) => (
-                                <Card key={display.serial} className="overflow-hidden text-center hover:shadow-md transition-shadow">
+                                <Card key={display.serial} className="overflow-hidden text-center hover:shadow-md transition-shadow border-slate-200">
                                     <CardContent className="p-4 flex flex-col items-center">
                                         {display.qrCodeDataUrl && (
-                                            <img
-                                                src={display.qrCodeDataUrl}
-                                                alt={`QR Code ${display.serial}`}
-                                                className="w-40 h-40 mb-2"
-                                            />
+                                            <img src={display.qrCodeDataUrl} alt={`QR Code ${display.serial}`} className="w-40 h-40 mb-2" />
                                         )}
                                         <p className="font-mono font-bold text-sm text-slate-800">{display.serial}</p>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="mt-2 text-slate-500"
-                                            onClick={() => downloadQRCode(display.qrCodeDataUrl!, display.serial)}
-                                        >
+                                        <Button variant="ghost" size="sm" className="mt-2 text-slate-500" onClick={() => downloadQRCode(display.qrCodeDataUrl!, display.serial)}>
                                             <Download className="w-3 h-3 mr-1" /> Baixar PNG
                                         </Button>
                                     </CardContent>
