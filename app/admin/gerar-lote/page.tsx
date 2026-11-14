@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +17,36 @@ interface DisplayGerado {
 
 export default function GerarLotePage() {
     const router = useRouter();
-    const [lote, setLote] = useState('');
     const [quantidade, setQuantidade] = useState('10');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [displaysGerados, setDisplaysGerados] = useState<DisplayGerado[]>([]);
+
+    // Estado para mostrar a prévia do próximo serial
+    const [proximoSerialPreview, setProximoSerialPreview] = useState('Carregando...');
+    const [prefixoPreview, setPrefixoPreview] = useState('DISP-XXXX-XXXX');
+
+    useEffect(() => {
+        fetch('/api/configuracoes')
+            .then(res => res.json())
+            .then(data => {
+                // Se a config vier corrompida do banco, o front também trata
+                const proximoNumero = Number(data.config?.proximoNumero) || 1;
+                const padding = Number(data.config?.padding) || 4;
+
+                const numStr = String(proximoNumero).padStart(padding, '0');
+
+                // Monta a prévia com a data e hora atual
+                const now = new Date();
+                const dateStr = String(now.getDate()).padStart(2, '0') + String(now.getMonth() + 1).padStart(2, '0');
+                const timeStr = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                const autoPrefix = `DISP-${dateStr}-${timeStr}`;
+
+                setPrefixoPreview(autoPrefix);
+                setProximoSerialPreview(`${autoPrefix}-${numStr}`);
+            })
+            .catch(() => setProximoSerialPreview('Erro ao carregar'));
+    }, []);
 
     async function handleGerar(e: React.FormEvent) {
         e.preventDefault();
@@ -35,14 +60,17 @@ export default function GerarLotePage() {
             const res = await fetch('/api/gerar-lote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lote, quantidade: parseInt(quantidade), baseUrl }),
+                body: JSON.stringify({ quantidade: parseInt(quantidade), baseUrl }),
             });
             const data = await res.json();
 
-            if (res.ok || res.status === 207) {
-                setMessage({ type: res.status === 207 ? 'error' : 'success', text: data.message });
-                // A API já retorna o QR Code em Base64
+            if (res.ok) {
+                setMessage({ type: 'success', text: data.message });
                 setDisplaysGerados(data.displays);
+
+                // Atualiza a prévia após gerar
+                const nextNum = (parseInt(proximoSerialPreview.split('-').pop() || '0') + parseInt(quantidade)).toString().padStart(4, '0');
+                setProximoSerialPreview(`${prefixoPreview}-${nextNum}`);
             } else {
                 setMessage({ type: 'error', text: data.message });
             }
@@ -63,7 +91,6 @@ export default function GerarLotePage() {
     }
 
     function handleLimpar() {
-        setLote('');
         setQuantidade('10');
         setMessage(null);
         setDisplaysGerados([]);
@@ -96,20 +123,16 @@ export default function GerarLotePage() {
                             <CardTitle className="text-2xl">Novo Lote de QR Codes</CardTitle>
                         </div>
                         <CardDescription>
-                            Crie seriais sequenciais. Eles serão salvos como "disponíveis" e não poderão ser repetidos.
+                            O sistema gerará códigos sequenciais e adicionará automaticamente a data e hora para evitar conflitos.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleGerar} className="flex flex-col md:flex-row gap-4 items-end">
                             <div className="space-y-2 flex-1 w-full">
-                                <Label htmlFor="lote">Nome do Lote</Label>
-                                <Input
-                                    id="lote"
-                                    placeholder="Ex: lote001"
-                                    value={lote}
-                                    onChange={(e) => setLote(e.target.value)}
-                                    required
-                                />
+                                <Label>Formato do Próximo Lote</Label>
+                                <div className="flex h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 font-mono items-center">
+                                    {proximoSerialPreview} ...
+                                </div>
                             </div>
                             <div className="space-y-2 w-full md:w-32">
                                 <Label htmlFor="quantidade">Qtd (Max 500)</Label>

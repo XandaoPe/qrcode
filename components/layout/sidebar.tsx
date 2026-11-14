@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Layers, Settings, Database } from 'lucide-react';
+import { LayoutDashboard, Layers, Settings, Database, SlidersHorizontal } from 'lucide-react';
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -12,6 +12,7 @@ export function Sidebar() {
         { href: '/admin/gerar-lote', label: 'Gerar Lote', icon: Layers },
         { href: '/admin/ativar', label: 'Ativar Display', icon: Settings },
         { href: '/admin/gerenciar', label: 'Gerenciar Displays', icon: Database },
+        { href: '/admin/configuracoes', label: 'Configurações', icon: SlidersHorizontal }, // Novo Link
     ];
 
     return (
